@@ -1,4 +1,5 @@
-import os,sys
+import os
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,12 +15,13 @@ import pickle
 import warnings
 #warnings.filterwarnings("ignore", 'This pattern has match groups')
 
-path_entrada = "../dados/1_dados_entrada"
+# Para rodar no linux, é necessário tirar a barra do começo do path por lagum motivo
+path_entrada = "dados/1_dados_entrada"
 exemplo = os.path.join(path_entrada, "PLOA2015_anex.pdf")
 
 
 # Selecionar as páginas referentes aos anexos 1,3 e 4
-text = extract_text(exemplo, page_numbers=[4]) 
+text = extract_text(exemplo, page_numbers=[4])
 print(text)
 
 # Processar os dados de todos os anos disponíveis, colocar em um pandas.DataFrame e salvar em arquivos pickle (.pkl)
