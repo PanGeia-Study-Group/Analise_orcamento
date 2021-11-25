@@ -25,3 +25,4 @@ text = extract_text(exemplo, page_numbers=[4])
 print(text)
 
 # Processar os dados de todos os anos disponíveis, colocar em um pandas.DataFrame e salvar em arquivos pickle (.pkl)
+# Teste Pedro
