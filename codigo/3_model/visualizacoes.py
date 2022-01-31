@@ -129,7 +129,7 @@ def composicao_filtro(orcamento:pd.DataFrame,
 
 def comparacao(orcamento:pd.DataFrame, 
                subdivisao:str,
-               opcoes:list,
+               opcoes:list, #ideia é que o usuário tenha um campo pra filtrar essas opções
                intervalo:list = [np.datetime64('2014'), np.datetime64('2021')], 
                **kwargs:dict) -> go.Figure:
     '''
