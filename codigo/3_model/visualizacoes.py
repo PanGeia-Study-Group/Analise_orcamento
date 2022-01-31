@@ -9,17 +9,38 @@ from typing import Callable, Any, Iterable
 sys.path.append('..\\..')
 DATA_PATH_TRATADOS = "../../dados/2_dados_tratados"
 
-def filtragem_dataset(aux, args, ):
+
+### FUNÇÕES AUXILIARES ###
+def filtragem_dataset(aux:pd.DataFrame, kwargs:dict):
+    '''
+    Filtra o dataset recebido
+
+    Parâmetros:
+    -----------
+        1. aux {pd.DataFrame}: 
+            dataframe a ser filtrado;
+        2. kwargs {dict}:
+            dicionário com os filtros que serão aplicados no dataset.
+  
+    Saídas:
+    -------
+        1. aux {pd.DataFrame}: 
+            dataframe filtrado;
+        2. valor {str}:
+            Texto com a concatenação de todos os filtros aplicados
+    '''
+
     valor = ['brasileiro']
-    for dicio in args:
-        chave = list(dicio.keys())[0]
-        valor = list(dicio.values())[0]
+    for chave in kwargs:
+        valor = kwargs[chave]
         aux = aux[aux[chave].isin(valor)]
     valor = '|'.join(valor)
 
     return aux, valor
 
-def historico_orcamento(orcamento:pd.DataFrame, *args:dict) -> go.Figure:
+
+### FUNÇÕES DE PLOTAGEM ###
+def historico_orcamento(orcamento:pd.DataFrame, **kwargs:dict) -> go.Figure:
     '''
     Calcula o histórico do orçamento filtrado para algum
 
@@ -27,7 +48,7 @@ def historico_orcamento(orcamento:pd.DataFrame, *args:dict) -> go.Figure:
     -----------
         1. orcamento {pd.DataFrame}: 
             arquivo com o histórico orçamentário;
-        2. args {dict}:
+        2. kwargs {dict}:
             dicionário com os filtros que serão aplicados no dataset.
   
     Saídas:
@@ -37,7 +58,7 @@ def historico_orcamento(orcamento:pd.DataFrame, *args:dict) -> go.Figure:
     '''
 
     aux = orcamento.copy()
-    aux, valor = filtragem_dataset(aux, args)
+    aux, valor = filtragem_dataset(aux, kwargs)
 
     aux = aux.groupby('exercicios').sum().reset_index()
 
@@ -56,7 +77,7 @@ def historico_orcamento(orcamento:pd.DataFrame, *args:dict) -> go.Figure:
 def composicao_filtro(orcamento:pd.DataFrame, 
                       subdivisao:str, 
                       intervalo:list = [np.datetime64('2014'), np.datetime64('2021')], 
-                      *args:dict) -> go.Figure:
+                      **kwargs:dict) -> go.Figure:
     '''
     Calcula a composição média do orçamento por subdivisão
 
@@ -68,7 +89,7 @@ def composicao_filtro(orcamento:pd.DataFrame,
             variável pelo qual o orçamento será plotado
         3. intervalo {list}:
             intervalo de tempo analisado com as datas em questão
-        4. args {dict}:
+        4. kwargs {dict}:
             dicionário com os filtros que serão aplicados no dataset.
 
   
@@ -79,7 +100,7 @@ def composicao_filtro(orcamento:pd.DataFrame,
     '''
 
     aux = orcamento.copy()
-    aux, valor = filtragem_dataset(aux, args)
+    aux, valor = filtragem_dataset(aux, kwargs)
 
     aux = aux[(aux.exercicios >= intervalo[0])&(aux.exercicios <= intervalo[1])]
     aux = aux.groupby([subdivisao, 'exercicios']).sum().reset_index()
@@ -107,9 +128,10 @@ def composicao_filtro(orcamento:pd.DataFrame,
 
 
 def comparacao(orcamento:pd.DataFrame, 
-               subdivisao:str, 
+               subdivisao:str,
+               opcoes:list,
                intervalo:list = [np.datetime64('2014'), np.datetime64('2021')], 
-               *args:dict) -> go.Figure:
+               **kwargs:dict) -> go.Figure:
     '''
     Calcula a composição média do orçamento por subdivisão
 
@@ -119,9 +141,11 @@ def comparacao(orcamento:pd.DataFrame,
             arquivo com o histórico orçamentário;
         2. subdivisao {str}:
             variável pelo qual o orçamento será plotado
-        3. intervalo {list}:
+        3. opcoes {list}:
+            opcoes que serão colocadas no radar
+        4. intervalo {list}:
             anos a serem comparados
-        4. args {dict}:
+        5. kwargs {dict}:
             dicionário com os filtros que serão aplicados no dataset.
 
   
@@ -133,14 +157,15 @@ def comparacao(orcamento:pd.DataFrame,
 
     aux = orcamento.copy()
     aux['orcamento_realizado'] = aux['orcamento_realizado']/1e9
-    aux, valor = filtragem_dataset(aux, args)
-    aux_total = (aux.groupby(subdivisao).sum()/aux.exercicios.nunique()).reset_index().sort_values('orcamento_realizado', ascending=False).iloc[:5, :].sort_values(subdivisao)
+    aux, valor = filtragem_dataset(aux, kwargs)
+    aux_total = (aux.groupby(subdivisao).sum()/aux.exercicios.nunique()).reset_index()
+    aux_total = aux_total[aux_total[subdivisao].isin(opcoes)].sort_values(subdivisao)
 
     fig = go.Figure()
 
     for ano in intervalo:
         aux1 = aux[aux.exercicios.dt.year == int(np.datetime_as_string(ano, unit='Y'))]
-        aux1 = aux1[aux1[subdivisao].isin(aux_total[subdivisao])]
+        aux1 = aux1[aux1[subdivisao].isin(opcoes)]
         aux1 = aux1.groupby(subdivisao).sum().reset_index().sort_values(subdivisao)
         aux1 = pd.concat((aux1, aux_total.reset_index().rename(columns={'orcamento_realizado': 'media_total'})['media_total']), axis=1)
         
@@ -159,9 +184,17 @@ if __name__ == '__main__':
     orcamento = pd.read_pickle(os.path.join(DATA_PATH_TRATADOS, 'orcamento_tratado.pkl'))
     PIB = pd.read_pickle(os.path.join(DATA_PATH_TRATADOS, 'PIB.pkl'))
 
-    fig1 = historico_orcamento(orcamento, {'nome_orgao_sup':['Ministério da Educação']}, {'nome_orgao_sub':['Fundação Universidade Federal de Uberlândia']})
-    fig2 = composicao_filtro(orcamento, 'nome_funcao', [np.datetime64('2014'), np.datetime64('2014')], {'nome_orgao_sup':['Ministério da Educação']})
-    fig3 = comparacao(orcamento, 'nome_orgao_sup', [np.datetime64('2014'), np.datetime64('2021')])
+    fig1 = historico_orcamento(orcamento=orcamento, 
+                               nome_orgao_sup=['Ministério da Educação'], 
+                               nome_orgao_sub=['Fundação Universidade Federal de Uberlândia'])
+    fig2 = composicao_filtro(orcamento=orcamento, 
+                             subdivisao='nome_funcao', 
+                             intervalo=[np.datetime64('2014'), np.datetime64('2021')], 
+                             nome_orgao_sup=['Ministério da Educação'])
+    fig3 = comparacao(orcamento=orcamento, 
+                      subdivisao='nome_orgao_sup', 
+                      opcoes=['Ministério da Educação', 'Ministério da Saúde', 'Ministério da Defesa', 'Ministério da Ciência, Tecnologia, Inovações e Comunicações'], 
+                      intervalo=[np.datetime64('2014'), np.datetime64('2018'), np.datetime64('2021')])
 
     fig1.show()
     fig2.show()
